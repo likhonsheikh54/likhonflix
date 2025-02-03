@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LikhonFlix Trending</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #141414;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        #error {
+            color: #ff0000;
+            font-weight: bold;
+        }
+        #trending {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .movie {
+            width: 200px;
+        }
+        img {
+            width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>LikhonFlix Trending</h1>
+    <div id="error"></div>
+    <div id="trending"></div>
+
+    <script>
+        const errorElement = document.getElementById('error');
+        const trendingElement = document.getElementById('trending');
+
+        async function fetchTrending() {
+            try {
+                const response = await fetch('https://likhonflix-api.vercel.app/api/v1/trending');
+                const data = await response.json();
+                
+                console.log('API Response:', data); // Log the entire response
+
+                if (!data.success) {
+                    throw new Error(data.message || 'Failed to fetch trending content');
+                }
+
+                return data.data;
+            } catch (error) {
+                console.error('Error:', error);
+                throw error;
+            }
+        }
+
+        function displayError(message) {
+            errorElement.textContent = `Error: ${message}`;
+        }
+
+        function displayTrending(trendingData) {
+            trendingData.forEach(movie => {
+                const movieElement = document.createElement('div');
+                movieElement.className = 'movie';
+                movieElement.innerHTML = `
+                    <img src="${movie.poster || '/placeholder.svg'}" alt="${movie.title}">
+                    <h3>${movie.title}</h3>
+                    <p>${movie.year}</p>
+                `;
+                trendingElement.appendChild(movieElement);
+            });
+        }
+
+        async function init() {
+            try {
+                const trending = await fetchTrending();
+                displayTrending(trending);
+            } catch (error) {
+                displayError(error.message);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
+
