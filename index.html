@@ -3,134 +3,270 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Most Popular Movies</title>
+    <title>Indian Movies Streaming Platform</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #111; color: #fff; text-align: center; margin: 0; }
-        .movies-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; padding: 20px; }
-        .movie-card { background: #222; padding: 10px; border-radius: 8px; cursor: pointer; transition: transform 0.2s; }
-        .movie-card:hover { transform: scale(1.05); }
-        .movie-card img { width: 100%; border-radius: 8px; height: 270px; object-fit: cover; }
-        .movie-title { font-size: 14px; margin-top: 8px; }
-        .error-log { background: #333; padding: 10px; margin: 20px auto; width: 90%; text-align: left; border-left: 4px solid red; font-size: 14px; }
-        .copy-btn { background: red; color: white; border: none; padding: 5px; margin-left: 10px; cursor: pointer; }
-        .player-container { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #000; padding: 10px; border-radius: 8px; z-index: 1000; }
-        .close-btn { position: absolute; top: 5px; right: 10px; background: red; border: none; color: white; padding: 5px; cursor: pointer; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .movies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .movie-card {
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        .movie-card:hover {
+            transform: scale(1.05);
+        }
+        .movie-card img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }
+        .movie-info {
+            padding: 10px;
+            background-color: rgba(0,0,0,0.7);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        .movie-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .movie-rating {
+            color: #ffd700;
+        }
+        #modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.9);
+        }
+        .modal-content {
+            background-color: #1e1e1e;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 800px;
+            position: relative;
+        }
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #videoPlayer {
+            width: 100%;
+            max-height: 500px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+        }
+        .error {
+            color: #ff4136;
+            text-align: center;
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
-    <h1>🎬 Most Popular Movies</h1>
-    <div id="movies" class="movies-container"></div>
-    <div id="log-container"></div>
-    
-    <!-- 🎥 Modern Video Player -->
-    <div id="player" class="player-container">
-        <button class="close-btn" onclick="closePlayer()">✖</button>
-        <video id="movie-player" controls width="320" height="180"></video>
+    <div class="container">
+        <h1>🎬 Top Rated Indian Movies</h1>
+        <div id="moviesGrid" class="movies-grid"></div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <div id="modalContent"></div>
+        </div>
     </div>
 
     <script>
-        const API_KEY = '97a0851af1msh8136e2298325bc7p1170d9jsn53c4b47c7bf0';
-        const API_HOST = 'imdb236.p.rapidapi.com';
-        const movieGrid = document.getElementById('movies');
-        const logContainer = document.getElementById('log-container');
-        const playerContainer = document.getElementById('player');
-        const moviePlayer = document.getElementById('movie-player');
+        // API Configuration
+        const RAPIDAPI_KEY = '97a0851af1msh8136e2298325bc7p1170d9jsn53c4b47c7bf0';
+        const RAPIDAPI_HOST = 'imdb236.p.rapidapi.com';
+        const LIKHONFLIX_API = 'https://likhonflix-api.vercel.app/api/v1';
 
-        // 📌 Log messages (for debugging)
-        function logMessage(message, isError = false) {
-            const logDiv = document.createElement('div');
-            logDiv.classList.add('error-log');
-            logDiv.style.color = isError ? 'red' : 'white';
-            logDiv.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+        // DOM Elements
+        const moviesGrid = document.getElementById('moviesGrid');
+        const modal = document.getElementById('modal');
+        const modalContent = document.getElementById('modalContent');
+        const closeBtn = document.querySelector('.close-btn');
 
-            const copyBtn = document.createElement('button');
-            copyBtn.classList.add('copy-btn');
-            copyBtn.textContent = 'Copy';
-            copyBtn.onclick = () => {
-                navigator.clipboard.writeText(message);
-                alert('Copied to clipboard!');
-            };
-
-            logDiv.appendChild(copyBtn);
-            logContainer.appendChild(logDiv);
-        }
-
-        // 🔄 Retry system (API requests up to 3 times)
-        async function fetchWithRetry(url, options, retries = 3) {
-            for (let attempt = 1; attempt <= retries; attempt++) {
-                try {
-                    logMessage(`Attempt ${attempt}: Fetching ${url}...`);
-                    const response = await fetch(url, options);
-
-                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-
-                    const data = await response.json();
-                    if (!data.data || data.data.length === 0) throw new Error('No data received from API.');
-
-                    return data;
-                } catch (error) {
-                    logMessage(`Error on attempt ${attempt}: ${error.message}`, true);
-                    if (attempt === retries) {
-                        logMessage(`Failed after ${retries} attempts.`, true);
-                        return null;
+        // Fetch Top Rated Indian Movies
+        async function fetchTopRatedIndianMovies() {
+            try {
+                const response = await fetch('https://imdb236.p.rapidapi.com/imdb/india/top-rated-indian-movies', {
+                    method: 'GET',
+                    headers: {
+                        'X-RapidAPI-Key': RAPIDAPI_KEY,
+                        'X-RapidAPI-Host': RAPIDAPI_HOST
                     }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch movies');
                 }
+
+                const movies = await response.json();
+                displayMovies(movies);
+            } catch (error) {
+                moviesGrid.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                console.error('Fetching movies error:', error);
             }
         }
 
-        async function fetchMovies() {
-            logMessage('Fetching popular movies...');
-            
-            const url = `https://imdb236.p.rapidapi.com/imdb/most-popular-movies`;
-            const options = {
-                headers: { 'X-RapidAPI-Key': API_KEY, 'X-RapidAPI-Host': API_HOST }
-            };
-
-            const data = await fetchWithRetry(url, options);
-
-            if (data) {
-                displayMovies(data.data);
-                logMessage('Movies loaded successfully.');
-            } else {
-                movieGrid.innerHTML = `<p style="color:red; text-align:center;">Failed to load movies. Please try again later.</p>`;
-            }
-        }
-
+        // Display Movies in Grid
         function displayMovies(movies) {
-            movieGrid.innerHTML = '';
-
+            moviesGrid.innerHTML = '';
             movies.forEach(movie => {
-                const poster = movie.primaryImage || 'https://via.placeholder.com/200x300?text=No+Image';
                 const movieCard = document.createElement('div');
                 movieCard.classList.add('movie-card');
-                movieCard.innerHTML = `<img src="${poster}" alt="${movie.primaryTitle}"><div class="movie-title">${movie.primaryTitle}</div>`;
-                movieCard.onclick = () => playMovie(movie);
-                movieGrid.appendChild(movieCard);
+                movieCard.innerHTML = `
+                    <img src="${movie.primaryImage || 'https://via.placeholder.com/200x300?text=No+Image'}" alt="${movie.primaryTitle}">
+                    <div class="movie-info">
+                        <div class="movie-title">${movie.primaryTitle}</div>
+                        <div class="movie-rating">⭐ ${movie.averageRating}/10</div>
+                    </div>
+                `;
+                movieCard.addEventListener('click', () => openMovieModal(movie));
+                moviesGrid.appendChild(movieCard);
             });
         }
 
-        function playMovie(movie) {
-            logMessage(`Playing movie: ${movie.primaryTitle}`);
+        // Open Movie Modal
+        async function openMovieModal(movie) {
+            try {
+                // Fetch Media Info
+                const mediaInfoResponse = await fetch(`${LIKHONFLIX_API}/mediaInfo?id=${movie.id}`);
+                const mediaInfo = await mediaInfoResponse.json();
 
-            // If there's an external video link, play it; otherwise, show an error
-            if (movie.externalLinks && movie.externalLinks.length > 0) {
-                const videoURL = movie.externalLinks[0];
-                moviePlayer.src = videoURL;
-                moviePlayer.play();
-                playerContainer.style.display = 'block';
-            } else {
-                logMessage(`No trailer found for ${movie.primaryTitle}`, true);
-                alert(`No trailer available for "${movie.primaryTitle}".`);
+                // Prepare Modal Content
+                let streamContent = '';
+                
+                // Check External Links
+                if (mediaInfo.data.externalLinks && mediaInfo.data.externalLinks.length > 0) {
+                    streamContent += '<h3>Streaming Links</h3>';
+                    mediaInfo.data.externalLinks.forEach((link, index) => {
+                        streamContent += `
+                            <div class="stream-link" data-link="${link}">
+                                Stream Option ${index + 1}
+                            </div>
+                        `;
+                    });
+                }
+
+                modalContent.innerHTML = `
+                    <h2>${movie.primaryTitle} (${movie.startYear})</h2>
+                    <div style="display: flex;">
+                        <img src="${movie.primaryImage}" style="max-width: 300px; margin-right: 20px;">
+                        <div>
+                            <p><strong>Rating:</strong> ${movie.averageRating}/10</p>
+                            <p><strong>Genre:</strong> ${movie.genres.join(', ')}</p>
+                            <p><strong>Language:</strong> ${movie.language}</p>
+                            <p>${movie.description}</p>
+                        </div>
+                    </div>
+                    <div id="streamLinks">${streamContent}</div>
+                    <video id="videoPlayer" controls style="display:none;"></video>
+                `;
+
+                // Add Stream Link Listeners
+                document.querySelectorAll('.stream-link').forEach(link => {
+                    link.addEventListener('click', async () => {
+                        const streamLink = link.getAttribute('data-link');
+                        
+                        try {
+                            // Attempt to get stream
+                            const streamResponse = await fetch(`${LIKHONFLIX_API}/getStream`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    file: streamLink,
+                                    key: 'DEFAULT_KEY_PLACEHOLDER' // Replace with actual key
+                                })
+                            });
+
+                            const streamData = await streamResponse.json();
+
+                            if (streamData.success && streamData.data.streamUrl) {
+                                const videoPlayer = document.getElementById('videoPlayer');
+                                videoPlayer.src = streamData.data.streamUrl;
+                                videoPlayer.style.display = 'block';
+                                videoPlayer.play();
+                            } else {
+                                alert('Unable to get stream URL');
+                            }
+                        } catch (error) {
+                            console.error('Stream error:', error);
+                            alert('Error getting stream');
+                        }
+                    });
+                });
+
+                modal.style.display = 'block';
+            } catch (error) {
+                console.error('Modal error:', error);
+                alert('Error loading movie details');
             }
         }
 
-        function closePlayer() {
-            moviePlayer.pause();
-            moviePlayer.src = '';
-            playerContainer.style.display = 'none';
-        }
+        // Close Modal
+        closeBtn.onclick = () => {
+            modal.style.display = 'none';
+            const videoPlayer = document.getElementById('videoPlayer');
+            if (videoPlayer) {
+                videoPlayer.pause();
+                videoPlayer.src = '';
+            }
+        };
 
-        fetchMovies();
+        // Close modal when clicking outside
+        window.onclick = (event) => {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+                const videoPlayer = document.getElementById('videoPlayer');
+                if (videoPlayer) {
+                    videoPlayer.pause();
+                    videoPlayer.src = '';
+                }
+            }
+        };
+
+        // Fetch movies on page load
+        fetchTopRatedIndianMovies();
     </script>
 </body>
 </html>
